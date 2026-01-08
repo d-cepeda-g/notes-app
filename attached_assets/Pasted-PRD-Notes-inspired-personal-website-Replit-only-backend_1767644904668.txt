@@ -1,0 +1,301 @@
+PRD — Notes-inspired personal website (Replit-only backend)
+
+0) What we’re recreating
+
+A Notes-style web app + personal site with:
+	•	Two note types:
+	•	Public notes (everyone can read; only site owner manages)
+	•	Private notes (any visitor can create/edit, but only within their own browser session)  ￼
+	•	Session-based identity: each browser gets a unique session_id stored in localStorage, used to scope private notes  ￼
+	•	Markdown notes (GFM) with tables/code/links etc.  ￼
+	•	Image paste: paste an image into a note → upload → insert markdown image link  ￼
+	•	Caching: public notes cached ~24h via ISR; private always real-time  ￼
+	•	Manual revalidate endpoint protected by a token header  ￼
+
+We’ll implement all persistence via Replit Database + Replit App Storage (no Supabase). Replit provides a built-in SQL database for structured data and App Storage for file uploads.  ￼
+
+⸻
+
+1) Goals
+
+G1 — Notes UI parity (core feel)
+	•	Sidebar with folders/sections
+	•	Notes list + editor view
+	•	Fast navigation between notes (public + private)
+
+G2 — Public + private note model
+	•	Public notes visible to all visitors, appear in shared sidebar
+	•	Private notes visible only to the session that created them  ￼
+
+G3 — Replit-only persistence
+	•	Notes stored in Replit’s built-in SQL Database  ￼
+	•	Images stored in Replit App Storage buckets  ￼
+
+G4 — Owner workflow
+	•	Owner can create/update/delete public notes
+	•	Owner can set slug/category/emoji
+
+G5 — Performance
+	•	Public content cached for ~24h; private content always fresh  ￼
+
+⸻
+
+2) Non-goals
+	•	Multi-device sync for private notes (private notes are session-scoped)
+	•	Collaborative editing
+	•	Full WYSIWYG editor (Markdown is fine for MVP)
+	•	Complex role-based permissions beyond “owner” and “visitor session”
+
+⸻
+
+3) Users & Use cases
+
+Personas
+	1.	Visitor (anonymous)
+
+	•	Reads public notes
+	•	Creates private notes without signup
+
+	2.	Site owner (admin)
+
+	•	Manages public notes shown on the site
+
+Top user stories
+
+Visitor
+	•	As a visitor, I can browse public notes and open them by slug.
+	•	As a visitor, I automatically get a session identity stored locally so my private notes persist for me.  ￼
+	•	As a visitor, I can create/edit/delete my private notes.
+	•	As a visitor, I can paste an image and it uploads + appears in my note as markdown.  ￼
+
+Owner
+	•	As the owner, I can create/edit/publish notes.
+	•	As the owner, I can trigger a revalidation so public pages update quickly.  ￼
+
+⸻
+
+4) Product requirements
+
+4.1 Information architecture & UI
+
+Screens
+	1.	Notes home
+
+	•	Left: “folders” / sections
+	•	Middle: note list
+	•	Right: note viewer/editor
+
+	2.	Public note route
+
+	•	/notes/[slug] for public note pages
+
+	3.	Private note route
+
+	•	/notes/private/[id] or in-app routing (no public slug routing needed)
+
+Key UI behaviors
+	•	Public notes always visible in sidebar (shared list)
+	•	Private notes appear in a “Private” section for that visitor session
+
+4.2 Note types & access rules
+
+We mirror the original conceptual model:
+	•	public = true: visible to everyone
+	•	public = false: visible only to the session that owns it (by session_id)  ￼
+
+Access control (application-level)
+	•	For any “private” read/write request, server checks:
+	•	request’s session_id matches note’s session_id
+	•	For public note management, server checks:
+	•	request includes valid ADMIN_TOKEN (Replit secret)
+
+4.3 Markdown support
+	•	Render Markdown with GitHub Flavored Markdown support (tables, code blocks, etc.)  ￼
+	•	Links open in new tab (match behavior described)  ￼
+
+4.4 Image paste uploads
+
+Original behavior: paste images into notes; they upload to storage and are inserted as markdown.  ￼
+
+Replit implementation
+	•	Client intercepts paste event
+	•	If clipboard contains image blob:
+	•	upload to Replit App Storage bucket
+	•	server returns a public (or signed) URL
+	•	client inserts ![alt](url) into Markdown
+
+Replit App Storage is designed for uploads like images and provides buckets + access policies.  ￼
+
+4.5 Caching & revalidation
+
+Original behavior: public notes cached for 24 hours with Next.js ISR; private always real-time; token-protected revalidate endpoint supports “layout” and specific “slug”.  ￼
+
+Spec
+	•	Public pages use Next.js revalidate: 86400 (or tag-based revalidate)
+	•	Private notes use cache: 'no-store' / dynamic fetch
+	•	Add POST /notes/revalidate
+	•	Requires header: x-revalidate-token: <token>
+	•	Body either:
+	•	{ "layout": true } to refresh sidebar lists
+	•	{ "slug": "..." } to refresh one note page  ￼
+
+⸻
+
+5) Data model (Replit SQL Database)
+
+5.1 Tables
+
+notes
+	•	id UUID (PK)
+	•	title TEXT
+	•	content TEXT (Markdown)
+	•	session_id UUID (nullable for public notes if desired)
+	•	public BOOLEAN
+	•	slug TEXT (unique when public=true)
+	•	category TEXT (nullable)
+	•	emoji TEXT (nullable)
+	•	created_at TIMESTAMP
+	•	updated_at TIMESTAMP (add for convenience)
+
+This mirrors the described schema in the original project.  ￼
+
+attachments (recommended)
+	•	id UUID (PK)
+	•	note_id UUID (FK → notes.id)
+	•	storage_key TEXT (path in App Storage)
+	•	url TEXT
+	•	created_at TIMESTAMP
+
+Why: lets you garbage-collect unused uploads later.
+
+5.2 Indexing
+	•	notes(public, created_at)
+	•	notes(session_id, created_at)
+	•	notes(slug) unique (for public notes)
+
+⸻
+
+6) Backend/API requirements (Next.js Route Handlers)
+
+6.1 Session identity
+
+Client
+	•	On first load:
+	•	if no notes_session_id in localStorage → generate UUID v4 → store
+	•	Send x-session-id on private API calls
+
+Server
+	•	Trust x-session-id only for scoping access; never return data without matching checks.
+
+6.2 Endpoints
+
+Public
+	•	GET /api/notes/public → list public notes (title, emoji, slug, category, created_at)
+	•	GET /api/notes/public/:slug → fetch full note by slug
+
+Private
+	•	GET /api/notes/private → list private notes for x-session-id
+	•	POST /api/notes/private → create private note
+	•	PUT /api/notes/private/:id → update (must match session)
+	•	DELETE /api/notes/private/:id → delete (must match session)
+
+Owner (admin)
+	•	POST /api/admin/notes → create public note
+	•	PUT /api/admin/notes/:id → update public note
+	•	DELETE /api/admin/notes/:id → delete public note
+	•	Admin auth: Authorization: Bearer <ADMIN_TOKEN>
+
+Uploads
+	•	POST /api/uploads/images
+	•	Auth:
+	•	allow both visitors + owner (images can exist in private notes too)
+	•	Body: multipart/form-data
+	•	Store in App Storage; return { url, storage_key }
+
+Revalidate
+	•	POST /notes/revalidate token-protected, supports layout or slug  ￼
+
+⸻
+
+7) Replit storage choices (two implementation paths)
+
+Option A (recommended): Replit SQL Database + App Storage
+	•	Notes: SQL database tables (queryable, indexable)  ￼
+	•	Images: App Storage buckets  ￼
+Best match to the original Supabase Postgres + storage approach.
+
+Option B (simpler): Replit Key-Value Store + App Storage
+	•	Notes stored as:
+	•	public:notes → array of note IDs
+	•	note:<id> → note JSON
+	•	session:<sid>:notes → list
+Replit Key-Value Store is zero-config and easy to use.  ￼
+Tradeoff: harder to query/sort/filter at scale; you’ll implement indexing manually.
+
+⸻
+
+8) Security & privacy requirements
+	•	Private notes security model: “security by unguessable session UUID + server-side enforcement”
+	•	Validate every private read/write by session_id match
+	•	Rate limit write endpoints (basic IP throttling)
+	•	Admin routes require token in Replit Secrets (never in client bundle)
+	•	App Storage:
+	•	Make bucket public-read only if you’re comfortable with direct URLs
+	•	Otherwise: signed URLs (expires), generated server-side
+
+⸻
+
+9) Analytics (optional but high signal)
+
+Track:
+	•	session_created
+	•	private_note_created
+	•	private_note_updated
+	•	image_uploaded
+	•	public_note_viewed (slug)
+	•	search_used (if you add search)
+
+⸻
+
+10) Milestones
+
+M1 — Skeleton UI
+	•	Notes layout + routing
+	•	Session ID creation + persistence
+
+M2 — Notes CRUD
+	•	SQL schema + API routes
+	•	Public read + private CRUD
+
+M3 — Markdown renderer
+	•	GFM support, tables, code blocks, link behavior  ￼
+
+M4 — Image paste
+	•	Upload API + App Storage integration  ￼
+	•	Paste-to-markdown insertion  ￼
+
+M5 — Caching + revalidate
+	•	ISR for public notes + revalidate endpoint  ￼
+
+M6 — Admin console
+	•	Simple owner-only UI to manage public notes
+
+⸻
+
+11) Acceptance criteria (MVP)
+	•	A new visitor can create private notes that persist across refreshes in the same browser session (localStorage session id).  ￼
+	•	Private notes are not accessible from a different session id (server-enforced).
+	•	Public notes show in sidebar for all visitors and are readable by slug.  ￼
+	•	Markdown renders correctly (tables/code/links).  ￼
+	•	Pasting an image uploads to Replit App Storage and inserts a markdown image link.  ￼
+	•	Public pages cache and refresh according to revalidation flow.  ￼
+
+⸻
+
+12) Open decisions (make these choices early)
+	1.	Private note portability: keep session-only (original) or allow “export/import”?
+	2.	App Storage access: public-read URLs vs signed URLs
+	3.	Admin auth UX: token header only vs simple login screen (still backed by a Replit secret)
+	4.	Slug rules: unique globally for public notes only, or allow collisions for private?
+
+If you want, I can turn this PRD into a concrete Replit-first technical plan (folder structure, route handler list, SQL schema DDL, and App Storage upload flow) using Option A.
