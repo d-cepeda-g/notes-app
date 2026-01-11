@@ -416,17 +416,22 @@ function SidebarLayoutInner({ children, notes: publicNotes }: SidebarLayoutProps
             style={isMobile ? { width: '100%', maxWidth: '100vw' } : undefined}
           >
             {isMobile && (
-              <div className="flex items-center justify-between px-4 py-3 border-b border-muted-foreground/20">
-                <div>
-                  <h1 className="text-2xl font-bold">Notes</h1>
-                  <p className="text-xs text-muted-foreground">{notes.length} Notes</p>
+              <div className="flex flex-col border-b border-muted-foreground/20">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <h1 className="text-2xl font-bold">Notes</h1>
+                    <p className="text-xs text-muted-foreground">{notes.length} Notes</p>
+                  </div>
+                  <NewNote
+                    addNewPinnedNote={handlePinToggle}
+                    clearSearch={clearSearch}
+                    setSelectedNoteSlug={setSelectedNoteSlug}
+                    isMobile={isMobile}
+                  />
                 </div>
-                <NewNote
-                  addNewPinnedNote={handlePinToggle}
-                  clearSearch={clearSearch}
-                  setSelectedNoteSlug={setSelectedNoteSlug}
-                  isMobile={isMobile}
-                />
+                <p className="px-4 pb-3 text-xs text-muted-foreground/70">
+                  👋 New here? Start with <button onClick={() => router.push('/notes/about-me')} className="underline hover:text-foreground transition-colors">about me</button>
+                </p>
               </div>
             )}
             <ScrollArea
