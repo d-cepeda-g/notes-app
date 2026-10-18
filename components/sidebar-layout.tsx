@@ -12,6 +12,7 @@ import NewNote from "./new-note";
 import { Pin } from "lucide-react";
 import { CommandMenu } from "./command-menu";
 import { SidebarContent } from "./sidebar-content";
+import { DeletedNotesNavigation } from "./deleted-notes-navigation";
 import { groupNotesByCategory, sortGroupedNotes } from "@/lib/note-utils";
 import { searchNotes } from "@/lib/search";
 import { getAdjacentNote } from "@/lib/note-navigation";
@@ -43,6 +44,7 @@ function SidebarLayoutInner({ children, notes: publicNotes, initialTimestamp }: 
   const [openSwipeItemSlug, setOpenSwipeItemSlug] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDeleted, setShowDeleted] = useState(false);
+  const isTrashView = showDeleted || trashFromUrl;
   const [creating, setCreating] = useState(false);
   const [busyNoteIds, setBusyNoteIds] = useState<Set<string>>(new Set());
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
@@ -288,10 +290,31 @@ function SidebarLayoutInner({ children, notes: publicNotes, initialTimestamp }: 
                   <input type="text" value={searchQuery} onChange={(event) => handleSearch(event.target.value)} placeholder="Search" aria-label="Search notes" autoComplete="off" className="w-full pl-9 pr-4 py-2 rounded-lg text-base placeholder:text-muted-foreground focus:outline-none border border-muted-foreground/20 dark:border-none dark:bg-[#353533] box-border" ref={searchInputRef} />
                 </div></div>}
                 {error && <div role="alert" className="px-2 py-3 text-xs"><p>{error}</p><button type="button" className="underline mt-1" onClick={() => { if (error === SESSION_EXPIRED_MESSAGE) window.location.reload(); else void refreshSessionNotes().catch(() => {}); }}>{error === SESSION_EXPIRED_MESSAGE ? "Reload" : "Retry"}</button></div>}
-                <button type="button" aria-pressed={showDeleted} onClick={() => { clearSearch(); setShowDeleted(!showDeleted); router.push(showDeleted ? "/notes" : "/notes?view=trash"); }} className="px-2 py-2 text-xs text-muted-foreground underline">{showDeleted ? "Back to Notes" : `Recently Deleted (${deletedNotes.length})`}</button>
-                {showDeleted ? <section aria-label="Recently Deleted" className="py-2">
-                  <h2 className="px-2 py-1 text-sm font-semibold">Recently Deleted</h2>
-                  {deletedNotes.length === 0 ? <p className="px-2 py-3 text-sm text-muted-foreground">No deleted notes</p> : <ul>{deletedNotes.map((note) => <li key={note.id} className="flex items-center justify-between gap-2 px-2 py-3 border-b border-muted-foreground/20"><span className="text-sm truncate">{note.emoji} {note.title || "New note"}</span><button type="button" disabled={!ready || busyNoteIds.has(note.id)} onClick={() => { void restoreNote(note, true); }} aria-label={`Restore ${note.title || "New note"}`} className="text-xs underline disabled:opacity-50">Restore</button></li>)}</ul>}
+                <DeletedNotesNavigation
+                  count={deletedNotes.length}
+                  ready={ready}
+                  selected={isTrashView}
+                  onShowNotes={() => { clearSearch(); setShowDeleted(false); router.push("/notes"); }}
+                  onShowDeleted={() => { clearSearch(); setShowDeleted(true); router.push("/notes?view=trash"); }}
+                />
+                {isTrashView ? <section aria-label="Recently Deleted" className="py-2">
+                  <h2 className="px-2 py-1 text-xs font-bold text-muted-foreground">Recently Deleted</h2>
+                  {deletedNotes.length === 0 ? (
+                    <p className="px-3 py-4 text-sm text-muted-foreground">{ready ? "No recently deleted notes" : "Loading notes…"}</p>
+                  ) : (
+                    <ul>{deletedNotes.map((note) => (
+                      <li key={note.id} className="flex min-h-[70px] items-center justify-between gap-3 border-b border-muted-foreground/20 px-3 py-2">
+                        <span className="min-w-0 truncate text-sm font-medium">{note.emoji} {note.title || "New note"}</span>
+                        <button
+                          type="button"
+                          disabled={!ready || busyNoteIds.has(note.id)}
+                          onClick={() => { void restoreNote(note, true); }}
+                          aria-label={`Restore ${note.title || "New note"}`}
+                          className="min-h-11 shrink-0 rounded-full border border-muted-foreground/20 bg-background/50 px-3 text-xs font-medium text-[#e2a727] transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 md:min-h-9"
+                        >Restore</button>
+                      </li>
+                    ))}</ul>
+                  )}
                 </section> : <SidebarContent groupedNotes={groupedNotes} selectedNoteSlug={selectedNoteSlug} onNoteSelect={handleNoteSelect} handlePinToggle={handlePinToggle} pinnedNotes={pinnedNotes} localSearchResults={localSearchResults} highlightedIndex={highlightedIndex} categoryOrder={categoryOrder} labels={labels} handleNoteDelete={handleNoteDelete} openSwipeItemSlug={openSwipeItemSlug} setOpenSwipeItemSlug={setOpenSwipeItemSlug} clearSearch={clearSearch} setSelectedNoteSlug={setSelectedNoteSlug} />}
               </div>
             </div>
