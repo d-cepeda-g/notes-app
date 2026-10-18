@@ -1,13 +1,19 @@
 {
-  "name": "alanagoyal",
+  "name": "david-cepeda-notes",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "db:push": "drizzle-kit push"
+    "lint": "eslint . --ext .ts,.tsx",
+    "db:push": "drizzle-kit push",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:check": "node scripts/check-schema.mjs",
+    "prestart": "npm run db:check",
+    "test:http": "tsx --test tests/http.integration.test.ts"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
@@ -40,7 +46,7 @@
     "google-auth-library": "^10.5.0",
     "lodash": "^4.17.21",
     "lucide-react": "^0.344.0",
-    "next": "14.1.2",
+    "next": "15.5.28",
     "next-themes": "^0.4.4",
     "pg": "^8.16.3",
     "react": "^18",
@@ -48,8 +54,8 @@
     "react-markdown": "^9.0.1",
     "react-resizable-panels": "^2.0.19",
     "react-swipeable": "^7.0.1",
-    "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
+    "sharp": "0.35.5",
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^10.0.0"
@@ -62,9 +68,13 @@
     "@types/uuid": "^9.0.8",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
-    "eslint-config-next": "14.1.2",
+    "eslint-config-next": "15.5.28",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
+    "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22 <25"
   }
 }

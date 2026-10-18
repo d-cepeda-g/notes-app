@@ -1,80 +1,51 @@
-# [notes](https://dcepedag.com)
+# notes
 
-a notes-inspired personal website, forked from [alana goyal's original repo](https://github.com/alanagoyal/alanagoyal).
+David Cepeda's Notes-inspired personal website, based on [Alana Goyal's original project](https://github.com/alanagoyal/notes).
 
-> *"i'm obsessed with re-creating apple products. this one is a notes-inspired website that doubles as my personal website."* — alana goyal
+The app has public Markdown notes and private browser notes, automatic draft saving, recoverable deletion, and revocable read-only sharing. The current visual design and plain-text private editor are retained.
 
-## what's different from the original
+## Run locally
 
-this fork includes several modifications from the original implementation:
+Use Node.js 22 or 24 and PostgreSQL 16 or later. Copy `.env.example` to `.env.local`, use a local database, and change both origin settings to `http://localhost:3000`. Next.js reads `.env.local`; database command-line scripts need `DATABASE_URL` exported in the shell.
 
-### backend changes
-
-- **migrated from supabase to replit postgresql** — uses [drizzle orm](https://orm.drizzle.team/) instead of supabase's client
-- **replit object storage for images** — replaced supabase storage with replit's built-in object storage
-- **api routes for all database operations** — created dedicated api routes with input validation and ownership verification:
-  - `GET /api/notes?session_id=xxx` — get session notes
-  - `POST /api/notes` — create a new note
-  - `PATCH /api/notes/[id]` — update a note
-  - `DELETE /api/notes/[id]` — delete a note
-  - `POST /api/uploads` — get presigned url for image upload
-  - `GET /api/uploads/serve/[...path]` — serve uploaded images
-- **presigned url upload flow** — implemented secure image uploads
-- **unique index on slug column** — prevents duplicate slugs
-
-### ui/ux changes
-
-visual changes aimed at mirroring apple's latest ios 26 notes app (mobile and web):
-
-- **simplified private notes** — private notes now use plain text editing with a simple textarea component (no formatting toolbar, bullet points, or checklists)
-- **macos-style header** — traffic light buttons (close/minimize/maximize), sidebar toggle, notes title, new note button
-- **restructured layout** — matches ios notes more closely (search in header, collapsible sidebar)
-- **private notes always in edit mode** — like ios notes, private notes stay editable
-
-### storage differences
-
-- **public notes**: store markdown, rendered with reactmarkdown
-- **private notes**: store plain text, edited with simple textarea component
-
-## original implementation
-
-for details on the original architecture and implementation, see the [original repo](https://github.com/alanagoyal/alanagoyal):
-
-- next.js 14 with app router
-- session-based architecture (public + private notes)
-- markdown with github flavored markdown support
-- isr caching for public notes
-- vim-inspired keyboard shortcuts
-- dynamic og image generation
-
-## setup
-
-### database
-
-this version uses replit's postgresql database with drizzle orm. to push schema changes:
-
-```bash
-npm run db:push
-```
-
-### environment variables
-
-```
-DATABASE_URL="<your-replit-postgres-url>"
-REVALIDATE_TOKEN="<your-revalidation-token>"
-```
-
-### install & run
-
-```bash
-npm install
+```sh
+npm ci
+DATABASE_URL=postgresql://… npm run db:migrate
 npm run dev
 ```
 
-## credits
+For a production build, configure the deployment's origin and database, then run:
 
-original project by [alana goyal](https://alanagoyal.com) — [github repo](https://github.com/alanagoyal/alanagoyal)
+```sh
+npm run db:migrate
+npm run db:check
+npm run build
+npm start
+```
 
-## license
+Image uploads require Replit App Storage and its credential sidecar. `PRIVATE_OBJECT_DIR` must name a private bucket prefix. Images are validated on the server, bound to notes, and checked again on download.
 
-licensed under the [mit license](https://github.com/alanagoyal/alanagoyal/blob/main/LICENSE.md).
+## Updating an existing deployment
+
+Read [RECOVERY.md](./RECOVERY.md) first. Rehearse against a restored production database and copied storage, preserve the Replit-only commits, and keep development-to-production data copying disabled. Old private data remains in the database, but the former exposed browser IDs are not accepted as credentials. The guide includes explicit administrator recovery and a dry-run image importer for reviewed legacy paths. Production startup only checks the schema; migrations require an explicit release step. Do not use `db:push` to replace the versioned production migrations.
+
+## Current projects
+
+Public copy lives in [content/projects.ts](./content/projects.ts). It preserves the original current/previous sections, compact entries, inline links, status lines, and previous projects, with Sudoclue and the separate Bloom card game added to the current projects. Update its copy and real modification timestamp when projects change; no production database edit is required to publish that copy in a new release.
+
+## Checks
+
+```sh
+npm run typecheck
+npm run lint
+TEST_DATABASE_URL=postgresql://… DATABASE_URL=postgresql://… npm test
+npm run build
+```
+
+Use a separate test database. With a test server running, set `NOTES_TEST_BASE_URL` and run `npm run test:http` to verify actual HTTP access boundaries and the create/save/share/delete/restore flow. CI runs these checks against isolated PostgreSQL.
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the current security, saving, storage, and data model. Additional rich-text, folder, appearance, and sync improvements are deferred.
+
+## Credits and license
+
+Original concept and implementation by [Alana Goyal](https://alanagoyal.com). Licensed under the [MIT license](./LICENSE.md).

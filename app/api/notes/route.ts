@@ -1,56 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createNote as createNoteDb, getSessionNotes } from "@/lib/db";
-import { v4 as uuidv4 } from "uuid";
+import { createNote, getSessionNotes } from "@/lib/db";
+import { assertSameOrigin, requireSession } from "@/lib/auth";
+import { allowKeys, errorResponse, parseUpdates, privateHeaders, readJson } from "@/lib/http";
+import { revalidatePath } from "next/cache";
 
+export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
-  const sessionId = request.nextUrl.searchParams.get("session_id");
-  
-  if (!sessionId) {
-    return NextResponse.json({ error: "session_id is required" }, { status: 400 });
-  }
-  
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(sessionId)) {
-    return NextResponse.json({ error: "Invalid session_id format" }, { status: 400 });
-  }
-  
   try {
-    const notes = await getSessionNotes(sessionId);
-    return NextResponse.json(notes);
-  } catch (error) {
-    console.error("Error fetching session notes:", error);
-    return NextResponse.json({ error: "Failed to fetch notes" }, { status: 500 });
-  }
+    const owner = await requireSession(request);
+    const notes = await getSessionNotes(owner, request.nextUrl.searchParams.get("deleted") === "true");
+    return NextResponse.json(notes, { headers: privateHeaders });
+  } catch (error) { return errorResponse(error); }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    
-    if (!body.session_id) {
-      return NextResponse.json({ error: "session_id is required" }, { status: 400 });
-    }
-    
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(body.session_id)) {
-      return NextResponse.json({ error: "Invalid session_id format" }, { status: 400 });
-    }
-    
-    const noteData = {
-      id: body.id || uuidv4(),
-      title: body.title || "",
-      content: body.content || "",
-      slug: body.slug || `note-${uuidv4()}`,
-      session_id: body.session_id,
-      public: false,
-      category: body.category || "today",
-      emoji: body.emoji || "👋🏼",
-    };
-    
-    const note = await createNoteDb(noteData);
-    return NextResponse.json(note);
-  } catch (error) {
-    console.error("Error creating note:", error);
-    return NextResponse.json({ error: "Failed to create note" }, { status: 500 });
-  }
+    assertSameOrigin(request);
+    const owner = await requireSession(request);
+    const body = await readJson(request);
+    allowKeys(body, ["title", "content", "emoji"]);
+    const note = await createNote(owner, parseUpdates(body, true));
+    revalidatePath("/notes", "layout");
+    return NextResponse.json(note, { status: 201, headers: privateHeaders });
+  } catch (error) { return errorResponse(error); }
 }

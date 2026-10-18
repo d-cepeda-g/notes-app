@@ -1,67 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Storage } from "@google-cloud/storage";
+import { and, eq } from "drizzle-orm";
+import { getSessionOwner } from "@/lib/auth";
+import { db, getAccessibleNoteById, getSharedNote } from "@/lib/db";
+import { HttpError, errorResponse } from "@/lib/http";
+import { attachments } from "@/shared/attachments";
+import { readImageObject } from "@/lib/object-storage";
+import { MAX_IMAGE_BYTES } from "@/lib/image-validation";
 
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const storage = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
-      },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
-    const filePath = params.path.join("/");
-    const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "";
-    
-    if (!privateObjectDir) {
-      return NextResponse.json({ error: "Object storage not configured" }, { status: 500 });
-    }
-
-    const fullPath = `${privateObjectDir}/${filePath}`;
-    const pathParts = fullPath.split("/").filter(p => p);
-    
-    if (pathParts.length < 2) {
-      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
-    }
-
-    const bucketName = pathParts[0];
-    const objectName = pathParts.slice(1).join("/");
-
-    const bucket = storage.bucket(bucketName);
-    const file = bucket.file(objectName);
-
-    const [exists] = await file.exists();
-    if (!exists) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
-    }
-
-    const [metadata] = await file.getMetadata();
-    const [content] = await file.download();
-
-    return new NextResponse(content, {
-      headers: {
-        "Content-Type": metadata.contentType || "application/octet-stream",
-        "Cache-Control": "public, max-age=31536000",
-      },
-    });
-  } catch (error) {
-    console.error("Error serving file:", error);
-    return NextResponse.json({ error: "Failed to serve file" }, { status: 500 });
-  }
+    const path = (await params).path.join("/");
+    if (!/^note-images\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.webp$/i.test(path)) throw new HttpError(404, "Image not found.");
+    const [image] = await db.select().from(attachments).where(and(eq(attachments.path, path), eq(attachments.status, "ready"))).limit(1);
+    if (!image) throw new HttpError(404, "Image not found.");
+    const ownerId = await getSessionOwner();
+    let note = await getAccessibleNoteById(image.note_id, ownerId || undefined);
+    const share = request.nextUrl.searchParams.get("share");
+    if (!note && share) note = await getSharedNote(share);
+    if (!note || note.id !== image.note_id || note.deleted_at) throw new HttpError(404, "Image not found.");
+    const bytes = await readImageObject(image.path);
+    if (!bytes.length || bytes.length > MAX_IMAGE_BYTES || bytes.length !== image.size) throw new HttpError(404, "Image not found.");
+    return new NextResponse(new Uint8Array(bytes), { headers: {
+      "Content-Type": "image/webp",
+      "Content-Length": String(bytes.length),
+      "Content-Disposition": `inline; filename="${image.id}.webp"`,
+      "Cache-Control": "private, no-store, max-age=0",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
+      "Cross-Origin-Resource-Policy": "same-origin",
+      "Referrer-Policy": "no-referrer",
+      "Vary": "Cookie",
+    } });
+  } catch (error) { return errorResponse(error); }
 }

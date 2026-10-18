@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getNoteBySlug } from "@/lib/db";
+import { requireSession } from "@/lib/auth";
+import { errorResponse, HttpError, privateHeaders } from "@/lib/http";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { slug: string } }
-) {
+export const dynamic = "force-dynamic";
+export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
-    const note = await getNoteBySlug(params.slug);
-    
-    if (!note) {
-      return NextResponse.json({ error: "Note not found" }, { status: 404 });
-    }
-    
-    return NextResponse.json(note);
-  } catch (error) {
-    console.error("Error fetching note:", error);
-    return NextResponse.json({ error: "Failed to fetch note" }, { status: 500 });
-  }
+    let owner: string | undefined;
+    try { owner = await requireSession(request); } catch (error) { if (!(error instanceof HttpError) || error.status !== 401) throw error; }
+    const note = await getNoteBySlug((await params).slug, owner);
+    if (!note) throw new HttpError(404, "Note not found");
+    return NextResponse.json(note, { headers: privateHeaders });
+  } catch (error) { return errorResponse(error); }
 }

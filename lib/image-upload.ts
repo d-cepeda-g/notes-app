@@ -120,46 +120,16 @@ export async function uploadNoteImage(
       }
     }
 
-    const response = await fetch("/api/uploads", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: fileToUpload.name,
-        noteId: noteId,
-        contentType: fileToUpload.type,
-      }),
-    });
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: "Failed to get upload URL",
-      };
+    if (fileToUpload.size > MAX_FILE_SIZE) {
+      return { success: false, error: "The image exceeds 5 MB after compression." };
     }
-
-    const { uploadURL, publicUrl } = await response.json();
-
-    const uploadResponse = await fetch(uploadURL, {
-      method: "PUT",
-      body: fileToUpload,
-      headers: {
-        "Content-Type": fileToUpload.type,
-      },
-    });
-
-    if (!uploadResponse.ok) {
-      return {
-        success: false,
-        error: "Failed to upload file",
-      };
-    }
-
-    return {
-      success: true,
-      url: publicUrl,
-    };
+    const form = new FormData();
+    form.set("noteId", noteId);
+    form.set("file", fileToUpload);
+    const response = await fetch("/api/uploads", { method: "POST", body: form });
+    const result = await response.json();
+    if (!response.ok) return { success: false, error: result.error || "Failed to upload image." };
+    return { success: true, url: result.url };
   } catch (error) {
     console.error("Unexpected error during upload:", error);
     return {

@@ -7,7 +7,6 @@ interface SidebarContentProps {
   groupedNotes: Record<string, Note[]>;
   selectedNoteSlug: string | null;
   onNoteSelect: (note: Note) => void;
-  sessionId: string;
   handlePinToggle: (slug: string) => void;
   pinnedNotes: Set<string>;
   localSearchResults: Note[] | null;
@@ -25,7 +24,6 @@ export function SidebarContent({
   groupedNotes,
   selectedNoteSlug,
   onNoteSelect,
-  sessionId,
   handlePinToggle,
   pinnedNotes,
   localSearchResults,
@@ -80,10 +78,9 @@ export function SidebarContent({
                   {groupedNotes[categoryKey].map(
                     (item: Note, index: number) => (
                       <NoteItem
-                        key={index}
+                        key={item.id}
                         item={item}
                         selectedNoteSlug={selectedNoteSlug}
-                        sessionId={sessionId}
                         onNoteSelect={onNoteSelect}
                         handlePinToggle={handlePinToggle}
                         isPinned={pinnedNotes.has(item.slug)}
@@ -109,7 +106,6 @@ export function SidebarContent({
               key={item.id}
               item={item}
               selectedNoteSlug={selectedNoteSlug}
-              sessionId={sessionId}
               onNoteSelect={onNoteSelect}
               handlePinToggle={handlePinToggleWithClear}
               isPinned={pinnedNotes.has(item.slug)}
