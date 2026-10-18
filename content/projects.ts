@@ -4,7 +4,7 @@
 export const PROJECTS_NOTE = {
   title: "projects",
   emoji: "🚀",
-  updated_at: "2026-10-18T20:42:45.000Z",
+  updated_at: "2026-10-18T20:49:19.000Z",
   content: `### current
 
 **Kalo** — <https://kaloapp.xyz/>\x20\x20
@@ -18,6 +18,9 @@ iOS card game with multiplayer via SwiftUI + Game Center.\x20\x20
 **Bloomhaus**\x20\x20
 iOS suite for image and video generation.\x20\x20
 **Status:** WIP\x20\x20
+
+**Bloom**\x20\x20
+Card game.
 
 **Lucide Dream Journal** — <https://lucidejournal.com/>\x20\x20
 iOS app to track dreams, with meaning analysis.\x20\x20

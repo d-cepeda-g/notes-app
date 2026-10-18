@@ -29,7 +29,7 @@ Read [RECOVERY.md](./RECOVERY.md) first. Old private data remains in the databas
 
 ## Current projects
 
-Public copy lives in [content/projects.ts](./content/projects.ts). It preserves the original current/previous sections, compact entries, inline links, status lines, and previous projects, with Sudoclue added to the current projects. Update its copy and real modification timestamp when projects change; no production database edit is required to publish that copy in a new release.
+Public copy lives in [content/projects.ts](./content/projects.ts). It preserves the original current/previous sections, compact entries, inline links, status lines, and previous projects, with Sudoclue and the separate Bloom card game added to the current projects. Update its copy and real modification timestamp when projects change; no production database edit is required to publish that copy in a new release.
 
 ## Checks
 
