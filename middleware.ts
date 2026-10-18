@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { canonicalPageRedirect } from "@/lib/canonical-url";
 
 export function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
@@ -15,7 +16,14 @@ export function middleware(request: NextRequest) {
   const headers = new Headers(request.headers);
   headers.set("x-nonce", nonce);
   headers.set("Content-Security-Policy", csp);
-  const response = NextResponse.next({ request: { headers } });
+  const redirect = canonicalPageRedirect(
+    request.url,
+    request.method,
+    request.headers.get("x-forwarded-host")?.split(",")[0].trim() || request.headers.get("host") || request.nextUrl.host,
+    process.env.APP_ORIGIN || process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.APP_REDIRECT_HOSTS,
+  );
+  const response = redirect ? NextResponse.redirect(redirect, 307) : NextResponse.next({ request: { headers } });
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "no-referrer");

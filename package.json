@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "db:migrate": "node scripts/migrate.mjs",
-    "prestart": "npm run db:migrate",
+    "db:check": "node scripts/check-schema.mjs",
+    "prestart": "npm run db:check",
     "test:http": "tsx --test tests/http.integration.test.ts"
   },
   "dependencies": {

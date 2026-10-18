@@ -24,3 +24,34 @@ test("rewrites raster bytes, removing appended active content and metadata", asy
   assert.equal(result.includes(Buffer.from("<script>")), false);
   assert.equal(metadata.exif, undefined);
 });
+
+test("preserves animated GIF and WebP frames, delays, and looping", async () => {
+  const frames = await Promise.all(["red", "blue"].map(background => sharp({ create: { width: 16, height: 12, channels: 3, background } }).png().toBuffer()));
+  const gif = await sharp(frames, { join: { animated: true } }).gif({ delay: [70, 130], loop: 3 }).toBuffer();
+  for (const input of [gif, await sharp(gif, { animated: true }).webp().toBuffer()]) {
+    const output = await normalizeImage(input);
+    const metadata = await sharp(output, { animated: true }).metadata();
+    assert.equal(metadata.format, "webp");
+    assert.equal(metadata.pages, 2);
+    assert.equal(metadata.pageHeight, 12);
+    assert.deepEqual(metadata.delay, [70, 130]);
+    assert.equal(metadata.loop, 3);
+    const { data, info } = await sharp(output, { animated: true }).raw().toBuffer({ resolveWithObject: true });
+    const second = 16 * 12 * info.channels;
+    assert.ok(data[0] > data[2], "first frame remains red");
+    assert.ok(data[second + 2] > data[second], "second frame remains blue");
+  }
+});
+
+test("rejects animations beyond the frame or aggregate pixel budgets", async () => {
+  const frames = await Promise.all(Array.from({ length: 121 }, (_, index) => sharp({ create: { width: 1, height: 1, channels: 3, background: { r: index, g: 255 - index, b: index % 2 ? 255 : 0 } } }).png().toBuffer()));
+  const gif = await sharp(frames, { join: { animated: true } }).gif().toBuffer();
+  assert.equal((await sharp(gif).metadata()).pages, 121);
+  await assert.rejects(normalizeImage(gif), /frames/);
+  // An animated WebP can claim a huge canvas despite tiny frame payloads.
+  // Reject its aggregate decoded area before requesting animated pixel decoding.
+  const twoFrames = await sharp(frames.slice(0, 2), { join: { animated: true } }).webp().toBuffer();
+  const extendedHeader = twoFrames.indexOf("VP8X");
+  twoFrames.writeUIntLE(5999, extendedHeader + 12, 3); twoFrames.writeUIntLE(3999, extendedHeader + 15, 3);
+  await assert.rejects(normalizeImage(twoFrames), /pixel limit/);
+});

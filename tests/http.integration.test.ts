@@ -106,4 +106,16 @@ describe("production HTTP security and note lifecycle", { skip: !base }, () => {
     const content = await projects.json(); assertSafe(content);
     assert.match(content.content, /kaloapp.xyz/); assert.match(content.content, /lucidejournal.com/); assert.match(content.content, /sudoclueapp.com/);
   });
+  it("redirects only configured page aliases to the canonical origin", async () => {
+    const aliases = (process.env.APP_REDIRECT_HOSTS || "").split(",").map(host => host.trim()).filter(Boolean);
+    if (!aliases.length) return;
+    const response = await request("/notes/projects?view=notes", "GET", "", undefined, { "x-forwarded-host": aliases[0] });
+    assert.equal(response.status, 307);
+    // Next can make a same-origin Location relative on the local test server.
+    assert.equal(new URL(response.headers.get("location")!, base).href, `${base}/notes/projects?view=notes`);
+    assert.match(response.headers.get("cache-control") || "", /no-store/);
+    const normal = await request("/notes/projects", "GET", "", undefined, { "x-forwarded-host": "unconfigured.invalid" });
+    assert.equal(normal.status, 200);
+    assert.equal(normal.headers.get("location"), null);
+  });
 });

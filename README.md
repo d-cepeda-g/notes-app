@@ -17,6 +17,8 @@ npm run dev
 For a production build, configure the deployment's origin and database, then run:
 
 ```sh
+npm run db:migrate
+npm run db:check
 npm run build
 npm start
 ```
@@ -25,7 +27,7 @@ Image uploads require Replit App Storage and its credential sidecar. `PRIVATE_OB
 
 ## Updating an existing deployment
 
-Read [RECOVERY.md](./RECOVERY.md) first. Old private data remains in the database, but the former exposed browser IDs are not accepted as credentials. The guide includes explicit administrator recovery and a safe importer for old image URLs. Do not use `db:push` to replace the versioned production migrations.
+Read [RECOVERY.md](./RECOVERY.md) first. Rehearse against a restored production database and copied storage, preserve the Replit-only commits, and keep development-to-production data copying disabled. Old private data remains in the database, but the former exposed browser IDs are not accepted as credentials. The guide includes explicit administrator recovery and a dry-run image importer for reviewed legacy paths. Production startup only checks the schema; migrations require an explicit release step. Do not use `db:push` to replace the versioned production migrations.
 
 ## Current projects
 

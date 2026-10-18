@@ -219,7 +219,7 @@ describe("database security and recovery", { skip: !databaseUrl }, () => {
   });
 
   it("re-runs the migration runner safely and refuses an edited applied migration", async () => {
-    const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+    const { mkdtemp, mkdir, writeFile, rm, cp, symlink } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const { fileURLToPath } = await import("node:url");
@@ -231,11 +231,17 @@ describe("database security and recovery", { skip: !databaseUrl }, () => {
     try {
       await client.query(`CREATE SCHEMA ${temporarySchema}`);
       await mkdir(join(fixture, "migrations"));
+      await mkdir(join(fixture, "scripts"));
+      await mkdir(join(fixture, "node_modules"));
+      for (const name of ["migrate.mjs", "migration-files.mjs"]) {
+        await cp(new URL(`../scripts/${name}`, import.meta.url), join(fixture, "scripts", name));
+      }
+      await symlink(fileURLToPath(new URL("../node_modules/pg", import.meta.url)), join(fixture, "node_modules", "pg"), "dir");
       const filename = join(fixture, "migrations", "0001_marker.sql");
       await writeFile(filename, "CREATE TABLE migration_marker(id integer PRIMARY KEY);\n");
       const connection = new URL(databaseUrl!);
       connection.searchParams.set("options", `-c search_path=${temporarySchema},public`);
-      const execute = () => spawnSync(process.execPath, [fileURLToPath(new URL("../scripts/migrate.mjs", import.meta.url))], {
+      const execute = () => spawnSync(process.execPath, [join(fixture, "scripts", "migrate.mjs")], {
         cwd: fixture, env: { ...process.env, DATABASE_URL: connection.toString() }, encoding: "utf8", timeout: 5000,
       });
       const initial = execute();
