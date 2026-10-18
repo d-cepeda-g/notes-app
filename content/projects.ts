@@ -4,14 +4,14 @@
 export const PROJECTS_NOTE = {
   title: "projects",
   emoji: "🚀",
-  updated_at: "2026-10-18T20:49:19.000Z",
+  updated_at: "2026-10-18T22:33:29.000Z",
   content: `### current
 
 **Kalo** — <https://kaloapp.xyz/>\x20\x20
 iOS app to log calories and track macros.\x20\x20
 **Status:** WIP\x20\x20
 
-**ShadowCards**\x20\x20
+**Bloom** — <https://bloombuddykits.com/>\x20\x20
 iOS card game with multiplayer via SwiftUI + Game Center.\x20\x20
 **Status:** WIP\x20\x20
 
@@ -19,16 +19,13 @@ iOS card game with multiplayer via SwiftUI + Game Center.\x20\x20
 iOS suite for image and video generation.\x20\x20
 **Status:** WIP\x20\x20
 
-**Bloom**\x20\x20
-Card game.
-
 **Lucide Dream Journal** — <https://lucidejournal.com/>\x20\x20
 iOS app to track dreams, with meaning analysis.\x20\x20
 **Status:** active\x20\x20
 
 **Sudoclue** — <https://sudoclueapp.com/>\x20\x20
 Illustrated logic puzzles for iPhone. Read the clues and work out where each character belongs.\x20\x20
-**Status:** current project\x20\x20
+**Status:** active\x20\x20
 
 ### previous
 
