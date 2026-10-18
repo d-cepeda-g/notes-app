@@ -1,5 +1,8 @@
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: fileURLToPath(new URL(".", import.meta.url)),
   async rewrites() {
     // Only apply rewrites if NEXT_PUBLIC_MESSAGES_URL is defined
     if (process.env.NEXT_PUBLIC_MESSAGES_URL) {
@@ -24,7 +27,7 @@ const nextConfig = {
         permanent: false,
       },
       {
-        source: '/:path((?!notes|api|messages|_next|static|public|favicon\\.ico|sitemap\\.xml|robots\\.txt).*)',
+        source: '/:path((?!notes|shared|api|messages|_next|static|public|favicon\\.ico|sitemap\\.xml|robots\\.txt).*)',
         destination: '/notes/:path',
         permanent: true,
       },

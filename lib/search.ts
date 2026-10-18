@@ -1,16 +1,10 @@
 import { Note } from "./types";
 
-export function searchNotes(notes: Note[], searchTerm: string, sessionId: string): Note[] {
-    const searchLower = searchTerm.trim().toLowerCase();
-    
-    return notes.filter((note) => {
-      const isPublic = note.public;
-      const sessionMatch = note.session_id === sessionId; 
-      const isAccessible = isPublic || sessionMatch;
-      const titleMatch = note.title.toLowerCase().includes(searchLower);
-      const contentMatch = note.content.toLowerCase().includes(searchLower);
-      const matchesSearch = titleMatch || contentMatch;
-
-      return isAccessible && matchesSearch;
-    });
-  }
+export function searchNotes(notes: Note[], searchTerm: string): Note[] {
+  const query = searchTerm.trim().toLocaleLowerCase();
+  return notes.filter((note) =>
+    !note.deleted_at && (note.public || note.can_edit) &&
+    ((note.title || "").toLocaleLowerCase().includes(query) ||
+      (note.content || "").toLocaleLowerCase().includes(query))
+  );
+}

@@ -1,6 +1,5 @@
 export const siteConfig = {
   title: "david cepeda | notes",
-  url: "https://notes-app.replit.app",
+  url: (process.env.NEXT_PUBLIC_SITE_URL || "https://dcepedag.com").replace(/\/$/, ""),
   description: "Personal notes and thoughts from David Cepeda",
 };
-
