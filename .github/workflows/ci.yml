@@ -2,7 +2,7 @@ name: Verify notes
 on:
   pull_request:
   push:
-    branches: [recovered]
+    branches: [main, recovered]
 permissions:
   contents: read
 jobs:
