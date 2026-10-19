@@ -4,12 +4,12 @@
 export const PROJECTS_NOTE = {
   title: "projects",
   emoji: "🚀",
-  updated_at: "2026-10-18T22:33:29.000Z",
+  updated_at: "2026-10-19T20:19:57.000Z",
   content: `### current
 
 **Kalo** — <https://kaloapp.xyz/>\x20\x20
 iOS app to log calories and track macros.\x20\x20
-**Status:** WIP\x20\x20
+**Status:** active\x20\x20
 
 **Bloom** — <https://bloombuddykits.com/>\x20\x20
 iOS card game with multiplayer via SwiftUI + Game Center.\x20\x20
